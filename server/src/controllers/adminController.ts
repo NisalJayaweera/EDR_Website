@@ -68,7 +68,7 @@ export const addCustomer = async (req: AuthRequest, res: Response): Promise<any>
 
   } catch (error: any) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ message: 'Validation failed', errors: (error as z.ZodError).errors });
+      return res.status(400).json({ message: 'Validation failed', errors: (error as any).errors });
     }
     if (error.code === '23505') { // unique violation
       return res.status(400).json({ message: 'A user with that email already exists.' });
