@@ -21,13 +21,13 @@ export const login = async (req: Request, res: Response): Promise<any> => {
         // Fallback for demo if hash not set in env, though it should be.
         // We'll just compare '123' if there's no hash configured, but usually we compare hash.
         if (password === '123') {
-           const token = jwt.sign({ role: 'admin' }, process.env.JWT_SECRET || 'replace_me', { expiresIn: process.env.JWT_EXPIRES_IN || '12h' });
+           const token = jwt.sign({ role: 'admin' }, process.env.JWT_SECRET || 'replace_me', { expiresIn: (process.env.JWT_EXPIRES_IN || '12h') as any });
            return res.json({ token, role: 'admin' });
         }
       } else {
         const isMatch = await bcrypt.compare(password, adminPasswordHash);
         if (isMatch) {
-          const token = jwt.sign({ role: 'admin' }, process.env.JWT_SECRET || 'replace_me', { expiresIn: process.env.JWT_EXPIRES_IN || '12h' });
+          const token = jwt.sign({ role: 'admin' }, process.env.JWT_SECRET || 'replace_me', { expiresIn: (process.env.JWT_EXPIRES_IN || '12h') as any });
           return res.json({ token, role: 'admin' });
         }
       }
@@ -50,7 +50,7 @@ export const login = async (req: Request, res: Response): Promise<any> => {
     const token = jwt.sign(
       { userId: user.id, username: user.username, role: 'user' },
       process.env.JWT_SECRET || 'replace_me',
-      { expiresIn: process.env.JWT_EXPIRES_IN || '12h' }
+      { expiresIn: (process.env.JWT_EXPIRES_IN || '12h') as any }
     );
 
     return res.json({

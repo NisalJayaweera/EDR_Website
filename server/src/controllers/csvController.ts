@@ -42,7 +42,7 @@ export const listFiles = async (req: AuthRequest, res: Response): Promise<any> =
 /** GET /api/files/:id/download — stream file to client */
 export const downloadFile = async (req: AuthRequest, res: Response): Promise<any> => {
   try {
-    const file = await getFileForUser(req.params.id, req.user!.userId!);
+    const file = await getFileForUser(req.params.id as string, req.user!.userId!);
 
     if (!file) {
       return res.status(404).json({ message: 'File not found or access denied' });
@@ -66,7 +66,7 @@ export const downloadFile = async (req: AuthRequest, res: Response): Promise<any
 /** DELETE /api/files/:id — delete from disk and DB */
 export const deleteFile = async (req: AuthRequest, res: Response): Promise<any> => {
   try {
-    const file = await getFileForUser(req.params.id, req.user!.userId!);
+    const file = await getFileForUser(req.params.id as string, req.user!.userId!);
 
     if (!file) {
       return res.status(404).json({ message: 'File not found or access denied' });
