@@ -1,0 +1,17 @@
+:root {
+  --primary: #030213;
+  --status-safe: #16a34a;
+  --status-warning: #f59e0b;
+  --status-critical: #dc2626;
+  --accent-ice: #3FC6F0;
+  --font-family: 'Inter', 'Space Grotesk', sans-serif;
+  --bg-color: #02010c;
+  --text-color: #ffffff;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-family);
+  background-color: var(--bg-color);
+  color: var(--text-color);
+}

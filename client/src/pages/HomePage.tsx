@@ -1,0 +1,209 @@
+import React, { useEffect, useState } from 'react';
+import { useOutletContext, useNavigate } from 'react-router-dom';
+import { Thermometer, Droplets, Upload, Clock3, Settings } from 'lucide-react';
+import { useLiveClock } from '../hooks/useLiveClock';
+import { useLiveReading } from '../hooks/useLiveReading';
+import { IntervalSlider } from '../components/IntervalSlider';
+import { apiFetch } from '../lib/api';
+import toast from 'react-hot-toast';
+
+interface OutletUser {
+  user: { name: string; username: string; role: string };
+}
+
+// --- Threshold logic (adjust for your cold-chain product) ---
+// Frozen: safe ≤ -18°C, warning -15 to -18, critical > -15
+// Chilled: safe 2–8°C; you can extend this if needed
+function getTempStatus(tempC: number): 'safe' | 'warning' | 'critical' {
+  if (tempC > -15) return 'critical';
+  if (tempC > -18) return 'warning';
+  return 'safe';
+}
+
+const STATUS_COLORS = {
+  safe:     { color: 'var(--status-safe)',     bg: 'rgba(22,163,74,0.12)',  border: 'rgba(22,163,74,0.3)'     },
+  warning:  { color: 'var(--status-warning)',  bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.3)'    },
+  critical: { color: 'var(--status-critical)', bg: 'rgba(220,38,38,0.12)',  border: 'rgba(220,38,38,0.3)'     },
+};
+
+export default function HomePage() {
+  const { user } = useOutletContext<OutletUser>();
+  const { time, date } = useLiveClock();
+  const navigate = useNavigate();
+
+  // Fetch user's device on mount
+  const [deviceId, setDeviceId] = useState<string | null>(null);
+  const [uploadIntervalMs, setUploadIntervalMs] = useState(300000);     // 5 min default
+  const [recordingIntervalMs, setRecordingIntervalMs] = useState(1000); // 1 s default
+  const [savingSettings, setSavingSettings] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const devices = await apiFetch('/devices');
+        if (devices.length > 0) {
+          const d = devices[0];
+          setDeviceId(d.id);
+          setUploadIntervalMs(d.upload_interval_ms || 300000);
+          setRecordingIntervalMs(d.recording_interval_ms || 1000);
+        }
+      } catch {
+        // No device yet — show placeholder
+      }
+    })();
+  }, []);
+
+  const { reading, loading: readingLoading } = useLiveReading(deviceId);
+
+  const tempStatus = reading ? getTempStatus(reading.temperature_c) : 'safe';
+  const tempColors = STATUS_COLORS[tempStatus];
+
+  const handleSaveSettings = async () => {
+    if (!deviceId) { toast.error('No device linked yet'); return; }
+    setSavingSettings(true);
+    try {
+      await apiFetch(`/devices/${deviceId}/settings`, {
+        method: 'PUT',
+        data: { upload_interval_ms: uploadIntervalMs, recording_interval_ms: recordingIntervalMs },
+      });
+      toast.success('Settings saved to device!');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to save settings');
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
+  return (
+    <div style={{
+      padding: '0',
+      backgroundImage: 'radial-gradient(circle at 80% 20%, rgba(63,198,240,0.1), transparent 45%), radial-gradient(circle at 10% 80%, rgba(63,198,240,0.06), transparent 35%)',
+    }}>
+      {/* ── Main ── */}
+      <main style={{ maxWidth: '1100px', margin: '0 auto', padding: '28px 24px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+
+        {/* ── Top: Greeting + Clock ── */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
+          <div>
+            <p style={{ fontSize: '0.85rem', color: 'var(--accent-ice)', letterSpacing: '1px', marginBottom: '4px' }}>WELCOME BACK</p>
+            <h1 style={{ fontSize: '2rem', fontWeight: 700, margin: 0 }}>{user?.name || user?.username}</h1>
+            {!deviceId && (
+              <p style={{ marginTop: '8px', fontSize: '0.85rem', color: 'rgba(245,158,11,0.8)' }}>
+                ⚠ No device linked to your account yet. Contact admin to provision your device.
+              </p>
+            )}
+          </div>
+          <div className="glass-panel" style={{ padding: '16px 24px', textAlign: 'right' }}>
+            <p style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--accent-ice)', margin: 0, letterSpacing: '2px', fontVariantNumeric: 'tabular-nums' }}>{time}</p>
+            <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)', marginTop: '4px' }}>{date}</p>
+          </div>
+        </div>
+
+        {/* ── Sensor Cards Row ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+
+          {/* Temperature Card */}
+          <div className="glass-panel" style={{
+            padding: '28px 32px',
+            borderColor: reading ? tempColors.border : 'rgba(63,198,240,0.2)',
+            background: reading ? tempColors.bg : 'rgba(3,2,19,0.6)',
+            transition: 'all 0.5s ease',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+              <Thermometer size={20} color={reading ? tempColors.color : 'rgba(255,255,255,0.4)'} />
+              <span style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.6)', letterSpacing: '1px' }}>TEMPERATURE</span>
+              {reading && (
+                <span style={{
+                  marginLeft: 'auto', fontSize: '0.7rem', fontWeight: 600, padding: '2px 10px',
+                  borderRadius: '12px', textTransform: 'uppercase', letterSpacing: '0.5px',
+                  color: tempColors.color, background: tempColors.bg, border: `1px solid ${tempColors.border}`,
+                }}>
+                  {tempStatus}
+                </span>
+              )}
+            </div>
+            {readingLoading ? (
+              <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '1rem' }}>Connecting...</p>
+            ) : reading ? (
+              <>
+                <p style={{ fontSize: '3.5rem', fontWeight: 800, margin: 0, color: tempColors.color, letterSpacing: '-2px', lineHeight: 1 }}>
+                  {Number(reading.temperature_c).toFixed(1)}
+                  <span style={{ fontSize: '1.5rem', fontWeight: 400, marginLeft: '4px' }}>°C</span>
+                </p>
+                <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.3)', marginTop: '10px' }}>
+                  Updated {new Date(reading.recorded_at).toLocaleTimeString()}
+                </p>
+              </>
+            ) : (
+              <p style={{ fontSize: '1.2rem', color: 'rgba(255,255,255,0.2)' }}>— No data —</p>
+            )}
+          </div>
+
+          {/* Humidity Card */}
+          <div className="glass-panel" style={{ padding: '28px 32px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+              <Droplets size={20} color="var(--accent-ice)" />
+              <span style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.6)', letterSpacing: '1px' }}>HUMIDITY</span>
+            </div>
+            {readingLoading ? (
+              <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '1rem' }}>Connecting...</p>
+            ) : reading ? (
+              <>
+                <p style={{ fontSize: '3.5rem', fontWeight: 800, margin: 0, color: 'var(--accent-ice)', letterSpacing: '-2px', lineHeight: 1 }}>
+                  {Number(reading.humidity_pct).toFixed(1)}
+                  <span style={{ fontSize: '1.5rem', fontWeight: 400, marginLeft: '4px' }}>%</span>
+                </p>
+                <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.3)', marginTop: '10px' }}>
+                  Relative Humidity
+                </p>
+              </>
+            ) : (
+              <p style={{ fontSize: '1.2rem', color: 'rgba(255,255,255,0.2)' }}>— No data —</p>
+            )}
+          </div>
+        </div>
+
+        {/* ── Device Settings (Sliders) ── */}
+        <div className="glass-panel" style={{ padding: '28px 32px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Settings size={18} color="var(--accent-ice)" />
+              <h2 style={{ fontSize: '1rem', fontWeight: 600, margin: 0 }}>Device Settings</h2>
+            </div>
+            <button
+              onClick={handleSaveSettings}
+              disabled={!deviceId || savingSettings}
+              className="btn-primary"
+              style={{ width: 'auto', padding: '8px 20px', fontSize: '0.85rem' }}
+            >
+              {savingSettings ? 'Saving...' : 'Apply Settings'}
+            </button>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
+            <IntervalSlider
+              label="Upload Interval"
+              icon={<Upload size={16} />}
+              valueMs={uploadIntervalMs}
+              onChange={setUploadIntervalMs}
+              disabled={!deviceId}
+            />
+            <IntervalSlider
+              label="Recording Interval"
+              icon={<Clock3 size={16} />}
+              valueMs={recordingIntervalMs}
+              onChange={setRecordingIntervalMs}
+              disabled={!deviceId}
+            />
+          </div>
+
+          {!deviceId && (
+            <p style={{ marginTop: '16px', fontSize: '0.8rem', color: 'rgba(255,255,255,0.3)', textAlign: 'center' }}>
+              Settings are locked until a device is linked to your account
+            </p>
+          )}
+        </div>
+      </main>
+    </div>
+  );
+}
