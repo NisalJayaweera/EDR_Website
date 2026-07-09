@@ -57,25 +57,17 @@ export const addCustomer = async (req: AuthRequest, res: Response): Promise<any>
 
     const newUser = insertResult.rows[0];
 
-    // Deliver credentials — failures are non-fatal so the customer record
-    // is always created even if the delivery provider has a config issue.
+    // Fire-and-forget: respond immediately, deliver credentials in the background.
+    // plainPassword is captured in the closure but never logged or returned.
     if (validatedData.email) {
-      try {
-        await sendWelcomeEmail(validatedData.email, validatedData.name, finalUsername, plainPassword);
-      } catch (emailErr: any) {
-        console.error('[addCustomer] Welcome email failed:', emailErr.message || emailErr);
-      }
+      sendWelcomeEmail(validatedData.email, validatedData.name, finalUsername, plainPassword)
+        .catch((err: any) => console.error('[addCustomer] Welcome email failed:', err.message || err));
     }
-
     if (validatedData.phone) {
-      try {
-        await sendWelcomeSms(validatedData.phone, finalUsername, plainPassword);
-      } catch (smsErr: any) {
-        console.error('[addCustomer] Welcome SMS failed:', smsErr.message || smsErr);
-      }
+      sendWelcomeSms(validatedData.phone, finalUsername, plainPassword)
+        .catch((err: any) => console.error('[addCustomer] Welcome SMS failed:', err.message || err));
     }
 
-    // plainPassword goes out of scope here — it no longer exists anywhere
     return res.status(201).json(newUser);
 
   } catch (error: any) {
@@ -175,33 +167,18 @@ export const resetCustomerPassword = async (req: AuthRequest, res: Response): Pr
       [hash, true, user.id]
     );
 
-    // Send credentials via email and SMS — failures are non-fatal so the
-    // password reset always succeeds even if the delivery provider has an issue.
-    const deliveryResults = { email: 'skipped', sms: 'skipped' };
-
+    // Fire-and-forget: respond immediately, deliver credentials in the background.
     if (user.email) {
-      try {
-        await sendPasswordResetEmail(user.email, user.name, user.username, newPassword);
-        deliveryResults.email = 'sent';
-      } catch (emailErr: any) {
-        deliveryResults.email = 'failed';
-        console.error('[resetCustomerPassword] Email delivery failed:', emailErr.message || emailErr);
-      }
+      sendPasswordResetEmail(user.email, user.name, user.username, newPassword)
+        .catch((err: any) => console.error('[resetCustomerPassword] Email failed:', err.message || err));
     }
-
     if (user.phone) {
-      try {
-        await sendPasswordResetSms(user.phone, user.username, newPassword);
-        deliveryResults.sms = 'sent';
-      } catch (smsErr: any) {
-        deliveryResults.sms = 'failed';
-        console.error('[resetCustomerPassword] SMS delivery failed:', smsErr.message || smsErr);
-      }
+      sendPasswordResetSms(user.phone, user.username, newPassword)
+        .catch((err: any) => console.error('[resetCustomerPassword] SMS failed:', err.message || err));
     }
 
     return res.json({
-      message: 'Password reset successful.',
-      delivery: deliveryResults,
+      message: 'Password reset successful. Credentials are being sent via email and SMS.',
       user: {
         id: user.id,
         name: user.name,

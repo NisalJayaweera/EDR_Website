@@ -134,21 +134,14 @@ export const forgotPassword = async (req: Request, res: Response): Promise<any> 
       [hash, true, user.id]
     );
 
-    // Send credentials via email and SMS — failures are non-fatal
+    // Fire-and-forget: respond immediately, deliver credentials in the background.
     if (user.email) {
-      try {
-        await sendPasswordResetEmail(user.email, user.name, user.username, newPassword);
-      } catch (emailErr: any) {
-        console.error('[forgotPassword] Email delivery failed:', emailErr.message || emailErr);
-      }
+      sendPasswordResetEmail(user.email, user.name, user.username, newPassword)
+        .catch((err: any) => console.error('[forgotPassword] Email failed:', err.message || err));
     }
-
     if (user.phone) {
-      try {
-        await sendPasswordResetSms(user.phone, user.username, newPassword);
-      } catch (smsErr: any) {
-        console.error('[forgotPassword] SMS delivery failed:', smsErr.message || smsErr);
-      }
+      sendPasswordResetSms(user.phone, user.username, newPassword)
+        .catch((err: any) => console.error('[forgotPassword] SMS failed:', err.message || err));
     }
 
     return res.json({ message: 'If the account exists, recovery instructions have been sent via email and SMS.' });
