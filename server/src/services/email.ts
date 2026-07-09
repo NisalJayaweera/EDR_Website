@@ -7,15 +7,20 @@ function createTransport() {
     return null; // Will fall back to mock logging
   }
 
+  // smtp4.gmail.com is Gmail's IPv4-only alias — avoids ENETUNREACH on Render
+  const host = SMTP_HOST === 'smtp.gmail.com' ? 'smtp4.gmail.com' : SMTP_HOST;
+
   return nodemailer.createTransport({
-    host: SMTP_HOST,
+    host,
     port: Number(SMTP_PORT),
     secure: Number(SMTP_PORT) === 465,
+    socketTimeout: 10000,
+    connectionTimeout: 10000,
     auth: {
       user: SMTP_USER,
       pass: SMTP_PASS,
     },
-  });
+  } as any);
 }
 
 export async function sendWelcomeEmail(
