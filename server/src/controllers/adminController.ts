@@ -163,14 +163,33 @@ export const resetCustomerPassword = async (req: AuthRequest, res: Response): Pr
       [hash, true, user.id]
     );
 
-    // Send credentials via email and SMS
-    await Promise.all([
-      user.email ? sendPasswordResetEmail(user.email, user.name, user.username, newPassword) : Promise.resolve(),
-      user.phone ? sendPasswordResetSms(user.phone, user.username, newPassword) : Promise.resolve(),
-    ]);
+    // Send credentials via email and SMS — failures are non-fatal so the
+    // password reset always succeeds even if the delivery provider has an issue.
+    const deliveryResults = { email: 'skipped', sms: 'skipped' };
+
+    if (user.email) {
+      try {
+        await sendPasswordResetEmail(user.email, user.name, user.username, newPassword);
+        deliveryResults.email = 'sent';
+      } catch (emailErr: any) {
+        deliveryResults.email = 'failed';
+        console.error('[resetCustomerPassword] Email delivery failed:', emailErr.message || emailErr);
+      }
+    }
+
+    if (user.phone) {
+      try {
+        await sendPasswordResetSms(user.phone, user.username, newPassword);
+        deliveryResults.sms = 'sent';
+      } catch (smsErr: any) {
+        deliveryResults.sms = 'failed';
+        console.error('[resetCustomerPassword] SMS delivery failed:', smsErr.message || smsErr);
+      }
+    }
 
     return res.json({
-      message: 'Password reset successful. Credentials sent via email and SMS.',
+      message: 'Password reset successful.',
+      delivery: deliveryResults,
       user: {
         id: user.id,
         name: user.name,

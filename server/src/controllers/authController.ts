@@ -134,11 +134,22 @@ export const forgotPassword = async (req: Request, res: Response): Promise<any> 
       [hash, true, user.id]
     );
 
-    // Send credentials via email and SMS
-    await Promise.all([
-      user.email ? sendPasswordResetEmail(user.email, user.name, user.username, newPassword) : Promise.resolve(),
-      user.phone ? sendPasswordResetSms(user.phone, user.username, newPassword) : Promise.resolve(),
-    ]);
+    // Send credentials via email and SMS — failures are non-fatal
+    if (user.email) {
+      try {
+        await sendPasswordResetEmail(user.email, user.name, user.username, newPassword);
+      } catch (emailErr: any) {
+        console.error('[forgotPassword] Email delivery failed:', emailErr.message || emailErr);
+      }
+    }
+
+    if (user.phone) {
+      try {
+        await sendPasswordResetSms(user.phone, user.username, newPassword);
+      } catch (smsErr: any) {
+        console.error('[forgotPassword] SMS delivery failed:', smsErr.message || smsErr);
+      }
+    }
 
     return res.json({ message: 'If the account exists, recovery instructions have been sent via email and SMS.' });
   } catch (error) {
