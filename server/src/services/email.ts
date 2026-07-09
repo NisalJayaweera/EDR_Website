@@ -7,13 +7,11 @@ function createTransport() {
     return null; // Will fall back to mock logging
   }
 
-  // smtp4.gmail.com is Gmail's IPv4-only alias — avoids ENETUNREACH on Render
-  const host = SMTP_HOST === 'smtp.gmail.com' ? 'smtp4.gmail.com' : SMTP_HOST;
-
   return nodemailer.createTransport({
-    host,
+    host: SMTP_HOST,
     port: Number(SMTP_PORT),
     secure: Number(SMTP_PORT) === 465,
+    family: 4, // Force IPv4 to prevent ENETUNREACH on Render's IPv6-disabled network
     socketTimeout: 10000,
     connectionTimeout: 10000,
     auth: {
