@@ -57,11 +57,23 @@ export const addCustomer = async (req: AuthRequest, res: Response): Promise<any>
 
     const newUser = insertResult.rows[0];
 
-    // Deliver credentials — plainPassword is NEVER logged, NEVER returned in response
-    await Promise.all([
-      sendWelcomeEmail(validatedData.email, validatedData.name, finalUsername, plainPassword),
-      sendWelcomeSms(validatedData.phone, finalUsername, plainPassword),
-    ]);
+    // Deliver credentials — failures are non-fatal so the customer record
+    // is always created even if the delivery provider has a config issue.
+    if (validatedData.email) {
+      try {
+        await sendWelcomeEmail(validatedData.email, validatedData.name, finalUsername, plainPassword);
+      } catch (emailErr: any) {
+        console.error('[addCustomer] Welcome email failed:', emailErr.message || emailErr);
+      }
+    }
+
+    if (validatedData.phone) {
+      try {
+        await sendWelcomeSms(validatedData.phone, finalUsername, plainPassword);
+      } catch (smsErr: any) {
+        console.error('[addCustomer] Welcome SMS failed:', smsErr.message || smsErr);
+      }
+    }
 
     // plainPassword goes out of scope here — it no longer exists anywhere
     return res.status(201).json(newUser);
