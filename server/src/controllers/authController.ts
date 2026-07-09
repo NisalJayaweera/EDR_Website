@@ -150,3 +150,66 @@ export const forgotPassword = async (req: Request, res: Response): Promise<any> 
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
+
+import net from 'net';
+import dns from 'dns';
+
+export const testEmailConnection = async (req: Request, res: Response): Promise<any> => {
+  const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+  const port = Number(process.env.SMTP_PORT) || 465;
+
+  const results: any = {
+    env: {
+      SMTP_HOST: process.env.SMTP_HOST,
+      SMTP_PORT: process.env.SMTP_PORT,
+      SMTP_USER: process.env.SMTP_USER,
+      SMTP_PASS_set: !!process.env.SMTP_PASS,
+    },
+    dns: {},
+    tcp: {}
+  };
+
+  // 1. Test DNS Lookup
+  try {
+    results.dns.ipv4 = await new Promise((resolve, reject) => {
+      dns.resolve4(host, (err, addresses) => err ? reject(err) : resolve(addresses));
+    });
+  } catch (err: any) {
+    results.dns.ipv4_error = err.message || err;
+  }
+
+  try {
+    results.dns.ipv6 = await new Promise((resolve, reject) => {
+      dns.resolve6(host, (err, addresses) => err ? reject(err) : resolve(addresses));
+    });
+  } catch (err: any) {
+    results.dns.ipv6_error = err.message || err;
+  }
+
+  // 2. Test TCP Connection
+  const targetIp = (results.dns.ipv4 && results.dns.ipv4[0]) || host;
+  try {
+    results.tcp.connection = await new Promise((resolve, reject) => {
+      const socket = new net.Socket();
+      const timer = setTimeout(() => {
+        socket.destroy();
+        reject(new Error('TCP connection timed out'));
+      }, 5000);
+
+      socket.connect(port, targetIp, () => {
+        clearTimeout(timer);
+        socket.destroy();
+        resolve(`Successfully connected to ${targetIp}:${port}`);
+      });
+
+      socket.on('error', (err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
+    });
+  } catch (err: any) {
+    results.tcp.error = err.message || err;
+  }
+
+  return res.json(results);
+};

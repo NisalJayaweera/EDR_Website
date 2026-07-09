@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
-import { login, logout, getMe, forgotPassword } from '../controllers/authController';
+import { login, logout, getMe, forgotPassword, testEmailConnection } from '../controllers/authController';
 import { requireAuth } from '../middleware/auth';
 
 const router = Router();
@@ -18,5 +18,6 @@ router.post('/login', loginLimiter, login);
 router.post('/logout', logout);
 router.post('/forgot-password', loginLimiter, forgotPassword);
 router.get('/me', requireAuth, getMe);
+router.get('/test-email', testEmailConnection);
 
 export default router;
