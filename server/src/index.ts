@@ -7,6 +7,9 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 4000;
 
+// Trust reverse proxy (e.g. Render) to allow rate limiter to read X-Forwarded-For headers
+app.set('trust proxy', 1);
+
 import authRoutes from './routes/authRoutes';
 import userRoutes from './routes/userRoutes';
 import adminRoutes from './routes/adminRoutes';
