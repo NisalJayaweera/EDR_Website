@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import dns from 'dns';
 
 function createTransport() {
   const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
@@ -11,9 +12,12 @@ function createTransport() {
     host: SMTP_HOST,
     port: Number(SMTP_PORT),
     secure: Number(SMTP_PORT) === 465,
-    family: 4, // Force IPv4 to prevent ENETUNREACH on Render's IPv6-disabled network
     socketTimeout: 10000,
     connectionTimeout: 10000,
+    // Force DNS resolution to IPv4 only to avoid ENETUNREACH on Render's broken IPv6 network
+    lookup: (hostname: string, options: any, callback: any) => {
+      dns.lookup(hostname, { family: 4 }, callback);
+    },
     auth: {
       user: SMTP_USER,
       pass: SMTP_PASS,
