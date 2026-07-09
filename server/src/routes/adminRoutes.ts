@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { addCustomer, getCustomers, provisionDevice } from '../controllers/adminController';
+import { addCustomer, getCustomers, provisionDevice, resetCustomerPassword } from '../controllers/adminController';
 import { requireAuth, requireAdmin } from '../middleware/auth';
 
 const router = Router();
@@ -10,6 +10,7 @@ router.use(requireAdmin);
 
 router.post('/customers', addCustomer);
 router.get('/customers', getCustomers);
+router.post('/customers/:id/reset-password', resetCustomerPassword);
 router.post('/devices', provisionDevice);  // create device + return api_key once
 
 export default router;

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiFetch, removeAuthToken } from '../lib/api';
 import toast from 'react-hot-toast';
-import { UserPlus, LogOut, Users } from 'lucide-react';
+import { UserPlus, LogOut, Users, Lock } from 'lucide-react';
 
 interface Customer {
   id: string;
@@ -12,11 +12,66 @@ interface Customer {
   created_at: string;
 }
 
+function ResetConfirmModal({ customerName, onConfirm, onCancel, loading }: { customerName: string; onConfirm: () => void; onCancel: () => void; loading: boolean }) {
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 2000,
+      background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }}>
+      <div className="glass-panel" style={{ padding: '32px', maxWidth: '420px', width: '90%', textAlign: 'center' }}>
+        <Lock size={40} color="var(--accent-ice)" style={{ marginBottom: '16px' }} />
+        <h2 style={{ fontSize: '1.1rem', marginBottom: '12px' }}>Reset Customer Password?</h2>
+        <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.9rem', marginBottom: '8px' }}>
+          This will generate a new temporary password for:
+        </p>
+        <p style={{
+          color: 'var(--accent-ice)', fontSize: '0.9rem', fontWeight: 600,
+          background: 'rgba(63,198,240,0.08)', borderRadius: '8px', padding: '8px 14px',
+          border: '1px solid rgba(63,198,240,0.2)', marginBottom: '24px',
+          wordBreak: 'break-all',
+        }}>
+          {customerName}
+        </p>
+        <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.8rem', marginBottom: '24px' }}>
+          The new password will be sent to them via email and SMS.
+        </p>
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+          <button
+            onClick={onCancel}
+            disabled={loading}
+            style={{
+              flex: 1, padding: '10px', borderRadius: '8px',
+              background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)',
+              color: '#fff', cursor: 'pointer', fontSize: '0.9rem',
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={loading}
+            style={{
+              flex: 1, padding: '10px', borderRadius: '8px',
+              background: 'rgba(63,198,240,0.15)', border: '1px solid rgba(63,198,240,0.5)',
+              color: 'var(--accent-ice)', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 600,
+            }}
+          >
+            {loading ? 'Resetting...' : 'Reset Password'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminPage() {
   const navigate = useNavigate();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingList, setLoadingList] = useState(true);
+  const [confirmTarget, setConfirmTarget] = useState<Customer | null>(null);
+  const [resetLoading, setResetLoading] = useState(false);
 
   const [form, setForm] = useState({
     name: '',
@@ -62,6 +117,22 @@ export default function AdminPage() {
     }
   };
 
+  const handleResetConfirm = async () => {
+    if (!confirmTarget) return;
+    setResetLoading(true);
+    try {
+      await apiFetch(`/admin/customers/${confirmTarget.id}/reset-password`, {
+        method: 'POST',
+      });
+      toast.success(`Password reset successful for ${confirmTarget.name}! New credentials sent.`);
+      setConfirmTarget(null);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to reset password');
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
   const handleLogout = () => {
     removeAuthToken();
     navigate('/login');
@@ -73,6 +144,15 @@ export default function AdminPage() {
       padding: '24px',
       backgroundImage: 'radial-gradient(circle at top left, rgba(63,198,240,0.12), transparent 40%)',
     }}>
+      {/* Modal */}
+      {confirmTarget && (
+        <ResetConfirmModal
+          customerName={confirmTarget.name}
+          onConfirm={handleResetConfirm}
+          onCancel={() => setConfirmTarget(null)}
+          loading={resetLoading}
+        />
+      )}
       {/* Header */}
       <div style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -210,7 +290,7 @@ export default function AdminPage() {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                    {['Name', 'Email', 'Phone', 'Date Added'].map(h => (
+                    {['Name', 'Email', 'Phone', 'Date Added', 'Actions'].map(h => (
                       <th key={h} style={{
                         textAlign: 'left', padding: '10px 14px',
                         color: 'rgba(255,255,255,0.5)', fontSize: '0.78rem',
@@ -235,6 +315,22 @@ export default function AdminPage() {
                       <td style={{ padding: '12px 14px', color: 'rgba(255,255,255,0.7)' }}>{c.phone}</td>
                       <td style={{ padding: '12px 14px', color: 'rgba(255,255,255,0.5)', fontSize: '0.85rem' }}>
                         {new Date(c.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </td>
+                      <td style={{ padding: '12px 14px' }}>
+                        <button
+                          onClick={() => setConfirmTarget(c)}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: '6px',
+                            padding: '6px 12px', borderRadius: '6px',
+                            background: 'rgba(63,198,240,0.1)', border: '1px solid rgba(63,198,240,0.3)',
+                            color: 'var(--accent-ice)', cursor: 'pointer', fontSize: '0.8rem',
+                            transition: 'all 0.2s',
+                          }}
+                          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(63,198,240,0.2)')}
+                          onMouseLeave={e => (e.currentTarget.style.background = 'rgba(63,198,240,0.1)')}
+                        >
+                          <Lock size={12} /> Reset Password
+                        </button>
                       </td>
                     </tr>
                   ))}

@@ -3,6 +3,9 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import pool from '../db/index';
 import { AuthRequest } from '../middleware/auth';
+import { generateInitialPassword } from '../services/password';
+import { sendPasswordResetEmail } from '../services/email';
+import { sendPasswordResetSms } from '../services/sms';
 
 export const login = async (req: Request, res: Response): Promise<any> => {
   const { identifier, password } = req.body;
@@ -96,6 +99,50 @@ export const getMe = async (req: AuthRequest, res: Response): Promise<any> => {
 
   } catch (error) {
     console.error('Get me error:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+export const forgotPassword = async (req: Request, res: Response): Promise<any> => {
+  const { identifier } = req.body;
+
+  if (!identifier) {
+    return res.status(400).json({ message: 'Username or email is required' });
+  }
+
+  try {
+    // Look up user by username OR email
+    const result = await pool.query(
+      'SELECT id, name, username, email, phone FROM users WHERE username = $1 OR email = $2',
+      [identifier, identifier]
+    );
+
+    if (result.rows.length === 0) {
+      // Return success even if user not found, to prevent username enumeration/probing.
+      return res.json({ message: 'If the account exists, recovery instructions have been sent via email and SMS.' });
+    }
+
+    const user = result.rows[0];
+
+    // Generate new temporary password
+    const newPassword = generateInitialPassword();
+    const hash = await bcrypt.hash(newPassword, 12);
+
+    // Update password hash and force must_change_password = true
+    await pool.query(
+      'UPDATE users SET password_hash = $1, must_change_password = $2 WHERE id = $3',
+      [hash, true, user.id]
+    );
+
+    // Send credentials via email and SMS
+    await Promise.all([
+      user.email ? sendPasswordResetEmail(user.email, user.name, user.username, newPassword) : Promise.resolve(),
+      user.phone ? sendPasswordResetSms(user.phone, user.username, newPassword) : Promise.resolve(),
+    ]);
+
+    return res.json({ message: 'If the account exists, recovery instructions have been sent via email and SMS.' });
+  } catch (error) {
+    console.error('Forgot password error:', error);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };

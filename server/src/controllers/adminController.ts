@@ -3,8 +3,8 @@ import { z } from 'zod';
 import bcrypt from 'bcrypt';
 import pool from '../db/index';
 import { generateInitialPassword } from '../services/password';
-import { sendWelcomeEmail } from '../services/email';
-import { sendWelcomeSms } from '../services/sms';
+import { sendWelcomeEmail, sendPasswordResetEmail } from '../services/email';
+import { sendWelcomeSms, sendPasswordResetSms } from '../services/sms';
 import { AuthRequest } from '../middleware/auth';
 
 const customerSchema = z.object({
@@ -133,6 +133,54 @@ export const provisionDevice = async (req: AuthRequest, res: Response): Promise<
     });
   } catch (error) {
     console.error('Provision device error:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+export const resetCustomerPassword = async (req: AuthRequest, res: Response): Promise<any> => {
+  const { id } = req.params;
+
+  try {
+    // Check if user exists and is not admin
+    const result = await pool.query(
+      'SELECT id, name, username, email, phone FROM users WHERE id = $1 AND username != $2',
+      [id, process.env.ADMIN_USERNAME || 'admin']
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Customer not found' });
+    }
+
+    const user = result.rows[0];
+
+    // Generate new temporary password
+    const newPassword = generateInitialPassword();
+    const hash = await bcrypt.hash(newPassword, 12);
+
+    // Update password hash and force change password flag
+    await pool.query(
+      'UPDATE users SET password_hash = $1, must_change_password = $2 WHERE id = $3',
+      [hash, true, user.id]
+    );
+
+    // Send credentials via email and SMS
+    await Promise.all([
+      user.email ? sendPasswordResetEmail(user.email, user.name, user.username, newPassword) : Promise.resolve(),
+      user.phone ? sendPasswordResetSms(user.phone, user.username, newPassword) : Promise.resolve(),
+    ]);
+
+    return res.json({
+      message: 'Password reset successful. Credentials sent via email and SMS.',
+      user: {
+        id: user.id,
+        name: user.name,
+        username: user.username,
+        email: user.email,
+        phone: user.phone
+      }
+    });
+  } catch (error) {
+    console.error('Reset customer password error:', error);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };

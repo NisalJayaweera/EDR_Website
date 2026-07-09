@@ -29,7 +29,7 @@ export async function sendWelcomeEmail(
   if (!transporter) {
     // Dev fallback — safe for dev, ensure no console.log(password) leaks in prod
     console.log(`[EMAIL MOCK] Welcome email would be sent to: ${to}`);
-    console.log(`[EMAIL MOCK] Username: ${username} | Password: [REDACTED — check email delivery]`);
+    console.log(`[EMAIL MOCK] Username: ${username} | Password: ${password} (Logged only in development/mock)`);
     return;
   }
 
@@ -51,6 +51,50 @@ export async function sendWelcomeEmail(
               <p style="margin:0 0 8px;font-size:13px;color:rgba(255,255,255,0.5);">USERNAME</p>
               <p style="margin:0 0 18px;font-size:18px;font-weight:600;color:#3FC6F0;letter-spacing:1px;">${username}</p>
               <p style="margin:0 0 8px;font-size:13px;color:rgba(255,255,255,0.5);">TEMPORARY PASSWORD</p>
+              <p style="margin:0;font-size:18px;font-weight:600;color:#3FC6F0;letter-spacing:2px;">${password}</p>
+            </div>
+            <p style="color:rgba(255,255,255,0.6);font-size:13px;">⚠️ Please log in and <strong>change your password immediately</strong> from the Settings page. This temporary password will not be shown again.</p>
+            <hr style="border:none;border-top:1px solid rgba(255,255,255,0.1);margin:28px 0;" />
+            <p style="color:rgba(255,255,255,0.4);font-size:12px;margin:0;">— Neutronics Team</p>
+          </div>
+        </body>
+      </html>
+    `,
+  });
+}
+
+export async function sendPasswordResetEmail(
+  to: string,
+  name: string,
+  username: string,
+  password: string
+): Promise<void> {
+  const transporter = createTransport();
+
+  if (!transporter) {
+    console.log(`[EMAIL MOCK] Password reset email would be sent to: ${to}`);
+    console.log(`[EMAIL MOCK] Username: ${username} | Temporary Password: ${password} (Logged only in development/mock)`);
+    return;
+  }
+
+  await transporter.sendMail({
+    from: `"Neutronics Cold Chain" <${process.env.SMTP_USER}>`,
+    to,
+    subject: 'Password Reset - Neutronics Cold Chain Dashboard',
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <body style="font-family:Inter,system-ui,sans-serif;background:#f4f4f4;margin:0;padding:24px;">
+          <div style="max-width:520px;margin:0 auto;background:#030213;color:#fff;border-radius:12px;padding:40px;border:1px solid rgba(63,198,240,0.3);">
+            <img src="https://neutronics.io/logo.png" alt="Neutronics" style="width:48px;margin-bottom:16px;" />
+            <h2 style="color:#3FC6F0;margin:0 0 8px;font-size:20px;letter-spacing:1px;">NEUTRONICS COLD CHAIN</h2>
+            <p style="color:rgba(255,255,255,0.7);font-size:14px;margin:0 0 28px;">Password Reset Requested</p>
+            <p style="margin:0 0 20px;">Hi <strong>${name}</strong>,</p>
+            <p style="color:rgba(255,255,255,0.8);">We received a request to reset your password. Use the credentials below to log in.</p>
+            <div style="background:rgba(63,198,240,0.08);border:1px solid rgba(63,198,240,0.2);border-radius:8px;padding:20px;margin:24px 0;">
+              <p style="margin:0 0 8px;font-size:13px;color:rgba(255,255,255,0.5);">USERNAME</p>
+              <p style="margin:0 0 18px;font-size:18px;font-weight:600;color:#3FC6F0;letter-spacing:1px;">${username}</p>
+              <p style="margin:0 0 8px;font-size:13px;color:rgba(255,255,255,0.5);">NEW TEMPORARY PASSWORD</p>
               <p style="margin:0;font-size:18px;font-weight:600;color:#3FC6F0;letter-spacing:2px;">${password}</p>
             </div>
             <p style="color:rgba(255,255,255,0.6);font-size:13px;">⚠️ Please log in and <strong>change your password immediately</strong> from the Settings page. This temporary password will not be shown again.</p>
