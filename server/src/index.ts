@@ -31,6 +31,9 @@ app.get('/', (req, res) => {
   res.send('Neutronics Cold Chain Server Running!');
 });
 
+import { startTelemetrySimulator } from './services/simulator';
+
 app.listen(port, () => {
   console.log(`Server listening on port ${port}`);
+  startTelemetrySimulator();
 });
