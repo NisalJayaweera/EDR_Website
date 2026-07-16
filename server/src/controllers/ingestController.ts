@@ -73,14 +73,19 @@ export const ingestCsv = async (req: DeviceRequest, res: Response): Promise<any>
 
   try {
     // Build the target path: uploads/csv/{userId}/{originalname}
-    const userDir = path.resolve('uploads', 'csv', device.user_id);
+    const userId = device?.user_id ?? device?.id;
+    if (!userId) {
+      throw new Error('Authenticated device does not contain a user identifier');
+    }
+    const userDir = path.resolve('uploads', 'csv', String(userId));
     fs.mkdirSync(userDir, { recursive: true });
 
     const fileName = req.file.originalname || `${Date.now()}.csv`;
     const destPath = path.join(userDir, fileName);
 
-    // Move from multer temp location to permanent location
-    fs.renameSync(req.file.path, destPath);
+    // Copy the file instead of rename to work across filesystem boundaries
+    fs.copyFileSync(req.file.path, destPath);
+    fs.unlinkSync(req.file.path);
 
     const sizeBytes = fs.statSync(destPath).size;
 

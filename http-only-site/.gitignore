@@ -1,0 +1,28 @@
+# ─── Environment Files ─────────────────────────────────
+.env
+.env.local
+.env.*.local
+
+# ─── Dependencies ──────────────────────────────────────
+node_modules/
+client/node_modules/
+server/node_modules/
+
+# ─── Build Outputs ─────────────────────────────────────
+client/dist/
+server/dist/
+
+# ─── Uploads (CSV files stored on disk) ────────────────
+server/uploads/
+
+# ─── Logs ──────────────────────────────────────────────
+*.log
+npm-debug.log*
+
+# ─── OS files ──────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ─── IDE ───────────────────────────────────────────────
+.vscode/settings.json
+.idea/

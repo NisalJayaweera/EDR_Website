@@ -233,11 +233,15 @@ export default function AdminPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      await apiFetch('/admin/customers', {
+      const res = await apiFetch('/admin/customers', {
         method: 'POST',
         data: form,
       });
-      toast.success('Customer added! Login credentials have been sent via email and SMS.');
+      if (res.temporaryPassword) {
+        toast.success(`Customer added! Password is: ${res.temporaryPassword}`, { duration: 10000 });
+      } else {
+        toast.success('Customer added! Login credentials have been sent via email and SMS.');
+      }
       setForm({ name: '', email: '', phone: '+94', address: '' });
       fetchCustomers();
     } catch (err: any) {
@@ -251,10 +255,14 @@ export default function AdminPage() {
     if (!confirmTarget) return;
     setResetLoading(true);
     try {
-      await apiFetch(`/admin/customers/${confirmTarget.id}/reset-password`, {
+      const res = await apiFetch(`/admin/customers/${confirmTarget.id}/reset-password`, {
         method: 'POST',
       });
-      toast.success(`Password reset successful for ${confirmTarget.name}! New credentials sent.`);
+      if (res.temporaryPassword) {
+        toast.success(`Password reset successful for ${confirmTarget.name}! New password is: ${res.temporaryPassword}`, { duration: 10000 });
+      } else {
+        toast.success(`Password reset successful for ${confirmTarget.name}! New credentials sent.`);
+      }
       setConfirmTarget(null);
     } catch (err: any) {
       toast.error(err.message || 'Failed to reset password');

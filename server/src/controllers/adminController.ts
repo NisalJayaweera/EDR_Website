@@ -58,7 +58,7 @@ export const addCustomer = async (req: AuthRequest, res: Response): Promise<any>
     const newUser = insertResult.rows[0];
 
     // Fire-and-forget: respond immediately, deliver credentials in the background.
-    // plainPassword is captured in the closure but never logged or returned.
+    // plainPassword is returned in the response for demo purposes so you can see it in the UI.
     if (validatedData.email) {
       sendWelcomeEmail(validatedData.email, validatedData.name, finalUsername, plainPassword)
         .catch((err: any) => console.error('[addCustomer] Welcome email failed:', err.message || err));
@@ -68,7 +68,7 @@ export const addCustomer = async (req: AuthRequest, res: Response): Promise<any>
         .catch((err: any) => console.error('[addCustomer] Welcome SMS failed:', err.message || err));
     }
 
-    return res.status(201).json(newUser);
+    return res.status(201).json({ ...newUser, temporaryPassword: plainPassword });
 
   } catch (error: any) {
     if (error instanceof z.ZodError) {
@@ -179,6 +179,7 @@ export const resetCustomerPassword = async (req: AuthRequest, res: Response): Pr
 
     return res.json({
       message: 'Password reset successful. Credentials are being sent via email and SMS.',
+      temporaryPassword: newPassword,
       user: {
         id: user.id,
         name: user.name,

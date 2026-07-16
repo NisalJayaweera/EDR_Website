@@ -1,0 +1,86 @@
+# flyctl launch added from .gitignore
+# ─── Environment Files ─────────────────────────────────
+**/.env
+**/.env.local
+**/.env.*.local
+
+# ─── Dependencies ──────────────────────────────────────
+**/node_modules
+**/client/node_modules
+**/server/node_modules
+
+# ─── Build Outputs ─────────────────────────────────────
+**/client/dist
+**/server/dist
+
+# ─── Uploads (CSV files stored on disk) ────────────────
+**/server/uploads
+
+# ─── Logs ──────────────────────────────────────────────
+**/*.log
+**/npm-debug.log*
+
+# ─── OS files ──────────────────────────────────────────
+**/.DS_Store
+**/Thumbs.db
+
+# ─── IDE ───────────────────────────────────────────────
+**/.vscode/settings.json
+**/.idea
+
+# flyctl launch added from client/.gitignore
+# Logs
+client/**/logs
+client/**/*.log
+client/**/npm-debug.log*
+client/**/yarn-debug.log*
+client/**/yarn-error.log*
+client/**/pnpm-debug.log*
+client/**/lerna-debug.log*
+
+client/**/node_modules
+client/**/dist
+client/**/dist-ssr
+client/**/*.local
+
+# Editor directories and files
+client/**/.vscode/*
+!client/**/.vscode/extensions.json
+client/**/.idea
+client/**/.DS_Store
+client/**/*.suo
+client/**/*.ntvs*
+client/**/*.njsproj
+client/**/*.sln
+client/**/*.sw?
+
+# flyctl launch added from http-only-site/.gitignore
+# ─── Environment Files ─────────────────────────────────
+http-only-site/**/.env
+http-only-site/**/.env.local
+http-only-site/**/.env.*.local
+
+# ─── Dependencies ──────────────────────────────────────
+http-only-site/**/node_modules
+http-only-site/**/client/node_modules
+http-only-site/**/server/node_modules
+
+# ─── Build Outputs ─────────────────────────────────────
+http-only-site/**/client/dist
+http-only-site/**/server/dist
+
+# ─── Uploads (CSV files stored on disk) ────────────────
+http-only-site/**/server/uploads
+
+# ─── Logs ──────────────────────────────────────────────
+http-only-site/**/*.log
+http-only-site/**/npm-debug.log*
+
+# ─── OS files ──────────────────────────────────────────
+http-only-site/**/.DS_Store
+http-only-site/**/Thumbs.db
+
+# ─── IDE ───────────────────────────────────────────────
+http-only-site/**/.vscode/settings.json
+http-only-site/**/.idea
+fly.toml
