@@ -19,13 +19,15 @@ function parseCSV(csv: string): SheetReading | null {
   // Google Sheets CSV is comma-separated; some fields may be quoted
   const cols = lastLine.split(',').map(c => c.replace(/^"|"$/g, '').trim());
 
-  // Expected columns (0-indexed):
-  // 0: Timestamp  1: Temperature(C)  2: Humidity(%)  3: LIS3DH_X  4: LIS3DH_Y  5: LIS3DH_Z
-  if (cols.length < 3) return null;
+  // Format is:
+  // 0: Date, 1: Time, 2: Temperature(C), 3: Humidity(%), 4: LIS3DH_X, 5: LIS3DH_Y, 6: LIS3DH_Z
+  // Example: "7/11/2026", "0:10:02", "25", "85", "1", "2", "9"
+  
+  if (cols.length < 4) return null;
 
-  const temperature_c = parseFloat(cols[1]);
-  const humidity_pct  = parseFloat(cols[2]);
-  const recorded_at   = cols[0]; // e.g. "7/11/2026 0:10:02"
+  const recorded_at = `${cols[0]} ${cols[1]}`; // Combine Date and Time
+  const temperature_c = parseFloat(cols[2]);
+  const humidity_pct  = parseFloat(cols[3]);
 
   if (isNaN(temperature_c) || isNaN(humidity_pct)) return null;
 
