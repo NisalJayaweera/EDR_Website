@@ -84,6 +84,41 @@ export default function HomePage() {
   const humStatus = reading ? getHumidityStatus(reading.humidity_pct, humidityThreshold) : 'safe';
   const humColors = STATUS_COLORS[humStatus];
 
+  // ── Alert Triggering Logic ──
+  useEffect(() => {
+    if (!reading || !deviceId) return;
+    
+    const now = Date.now();
+    const COOLDOWN_MS = 60 * 60 * 1000; // 1 hour
+    
+    const triggerIfNeeded = async (type: 'temperature' | 'humidity', value: number, threshold: number, status: string) => {
+      if (status === 'safe') return;
+      
+      const lastSentKey = `edr_alert_sent_${userKey}_${type}`;
+      const lastSent = parseInt(localStorage.getItem(lastSentKey) || '0', 10);
+      
+      if (now - lastSent > COOLDOWN_MS) {
+        // Optimistically set to prevent double-firing in StrictMode
+        localStorage.setItem(lastSentKey, now.toString());
+        try {
+          await apiFetch(`/devices/${deviceId}/alert`, {
+            method: 'POST',
+            data: { type, value, threshold, status }
+          });
+          toast(`Alert sent for ${type}`, { icon: '⚠️' });
+        } catch (err) {
+          console.error(`Failed to send alert for ${type}:`, err);
+          // Rollback if failed
+          localStorage.setItem(lastSentKey, lastSent.toString());
+        }
+      }
+    };
+
+    triggerIfNeeded('temperature', reading.temperature_c, tempThreshold, tempStatus);
+    triggerIfNeeded('humidity', reading.humidity_pct, humidityThreshold, humStatus);
+
+  }, [reading, deviceId, tempStatus, humStatus, tempThreshold, humidityThreshold, userKey]);
+
   const handleSaveSettings = async () => {
     if (!deviceId) { toast.error('No device linked yet'); return; }
     setSavingSettings(true);

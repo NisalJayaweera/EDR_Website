@@ -2,6 +2,8 @@ import { Response } from 'express';
 import pool from '../db/index';
 import { AuthRequest } from '../middleware/auth';
 import { INTERVAL_STEPS_SET } from '../lib/intervalSteps';
+import { sendAlertEmail } from '../services/email';
+import { sendAlertSms } from '../services/sms';
 
 /** Get all devices for the authenticated user */
 export const getUserDevices = async (req: AuthRequest, res: Response): Promise<any> => {
@@ -153,6 +155,50 @@ export const getTrackHistory = async (req: AuthRequest, res: Response): Promise<
     return res.json(result.rows.reverse());
   } catch (error) {
     console.error('Get track history error:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+/**
+ * Trigger an email and SMS alert for a threshold breach.
+ * Called by the frontend.
+ */
+export const triggerAlert = async (req: AuthRequest, res: Response): Promise<any> => {
+  const { id: deviceId } = req.params;
+  const { type, value, threshold, status } = req.body;
+
+  try {
+    const deviceCheck = await pool.query(
+      'SELECT id FROM devices WHERE id = $1 AND user_id = $2',
+      [deviceId, req.user?.userId]
+    );
+    if (deviceCheck.rows.length === 0) {
+      return res.status(404).json({ message: 'Device not found' });
+    }
+
+    const userResult = await pool.query(
+      'SELECT name, email, phone FROM users WHERE id = $1',
+      [req.user?.userId]
+    );
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const { name, email, phone } = userResult.rows[0];
+
+    const alerts = [];
+    if (email) {
+      alerts.push(sendAlertEmail(email, name || 'User', type, value, threshold, status));
+    }
+    if (phone) {
+      alerts.push(sendAlertSms(phone, type, value, threshold, status));
+    }
+
+    await Promise.allSettled(alerts);
+
+    return res.json({ message: 'Alerts dispatched' });
+  } catch (error) {
+    console.error('Trigger alert error:', error);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };

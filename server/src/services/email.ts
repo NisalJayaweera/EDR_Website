@@ -184,3 +184,57 @@ export async function sendPasswordResetEmail(
   console.log(`[EMAIL MOCK] Password reset email would be sent to: ${to}`);
   console.log(`[EMAIL MOCK] Username: ${username} | Temporary Password: ${password} (Logged only in development/mock)`);
 }
+
+export async function sendAlertEmail(
+  to: string,
+  name: string,
+  alertType: 'temperature' | 'humidity',
+  value: number,
+  threshold: number,
+  status: 'warning' | 'critical'
+): Promise<void> {
+  const html = `
+    <!DOCTYPE html>
+    <html>
+      <body style="font-family:Inter,system-ui,sans-serif;background:#f4f4f4;margin:0;padding:24px;">
+        <div style="max-width:520px;margin:0 auto;background:#030213;color:#fff;border-radius:12px;padding:40px;border:1px solid rgba(220,38,38,0.3);">
+          <img src="https://neutronics.io/logo.png" alt="Neutronics" style="width:48px;margin-bottom:16px;" />
+          <h2 style="color:#ef4444;margin:0 0 8px;font-size:20px;letter-spacing:1px;">ALERT NOTIFICATION</h2>
+          <p style="color:rgba(255,255,255,0.7);font-size:14px;margin:0 0 28px;">Threshold Breach Detected</p>
+          <p style="margin:0 0 20px;">Hi <strong>${name}</strong>,</p>
+          <p style="color:rgba(255,255,255,0.8);">Your cold-chain monitoring system has detected a ${status} condition.</p>
+          <div style="background:rgba(220,38,38,0.08);border:1px solid rgba(220,38,38,0.2);border-radius:8px;padding:20px;margin:24px 0;">
+            <p style="margin:0 0 8px;font-size:13px;color:rgba(255,255,255,0.5);">METRIC</p>
+            <p style="margin:0 0 18px;font-size:18px;font-weight:600;color:#ef4444;letter-spacing:1px;text-transform:uppercase;">${alertType}</p>
+            <p style="margin:0 0 8px;font-size:13px;color:rgba(255,255,255,0.5);">CURRENT VALUE</p>
+            <p style="margin:0 0 18px;font-size:18px;font-weight:600;color:#ef4444;letter-spacing:1px;">${value} (Threshold: ${threshold})</p>
+          </div>
+          <p style="color:rgba(255,255,255,0.6);font-size:13px;">Please check your dashboard and take necessary actions immediately.</p>
+          <hr style="border:none;border-top:1px solid rgba(255,255,255,0.1);margin:28px 0;" />
+          <p style="color:rgba(255,255,255,0.4);font-size:12px;margin:0;">— Neutronics Team</p>
+        </div>
+      </body>
+    </html>
+  `;
+
+  const subject = \`[\${status.toUpperCase()}] \${alertType} Alert - Neutronics Cold Chain\`;
+
+  if (process.env.BREVO_API_KEY) {
+    await sendViaBrevoApi(to, subject, html);
+    return;
+  }
+
+  const transporter = createTransport();
+  if (transporter) {
+    await transporter.sendMail({
+      from: \`"Neutronics Cold Chain" <\${process.env.SMTP_USER}>\`,
+      to,
+      subject,
+      html,
+    });
+    return;
+  }
+
+  console.log(\`[EMAIL MOCK] Alert email would be sent to: \${to}\`);
+  console.log(\`[EMAIL MOCK] \${subject} | Value: \${value} | Threshold: \${threshold}\`);
+}
