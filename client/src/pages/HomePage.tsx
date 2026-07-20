@@ -3,7 +3,7 @@ import { useOutletContext, useNavigate } from 'react-router-dom';
 import { Thermometer, Droplets, Upload, Clock3, Settings } from 'lucide-react';
 import { useLiveClock } from '../hooks/useLiveClock';
 import { useSheetReading } from '../hooks/useSheetReading';
-import { IntervalSlider } from '../components/IntervalSlider';
+import { ThresholdSlider } from '../components/ThresholdSlider';
 import { apiFetch } from '../lib/api';
 import toast from 'react-hot-toast';
 
@@ -12,10 +12,15 @@ interface OutletUser {
 }
 
 // --- Threshold logic ---
-// Adjust thresholds to match your product's safe temperature range
-function getTempStatus(tempC: number): 'safe' | 'warning' | 'critical' {
-  if (tempC > 35) return 'critical';
-  if (tempC > 30) return 'warning';
+function getTempStatus(tempC: number, threshold: number): 'safe' | 'warning' | 'critical' {
+  if (tempC > threshold + 2) return 'critical';
+  if (tempC > threshold) return 'warning';
+  return 'safe';
+}
+
+function getHumidityStatus(humPct: number, threshold: number): 'safe' | 'warning' | 'critical' {
+  if (humPct > threshold + 5) return 'critical';
+  if (humPct > threshold) return 'warning';
   return 'safe';
 }
 
@@ -32,8 +37,8 @@ export default function HomePage() {
 
   // Fetch user's device on mount
   const [deviceId, setDeviceId] = useState<string | null>(null);
-  const [uploadIntervalMs, setUploadIntervalMs] = useState(300000);     // 5 min default
-  const [recordingIntervalMs, setRecordingIntervalMs] = useState(1000); // 1 s default
+  const [tempThreshold, setTempThreshold] = useState(25);
+  const [humidityThreshold, setHumidityThreshold] = useState(60);
   const [savingSettings, setSavingSettings] = useState(false);
 
   useEffect(() => {
@@ -43,8 +48,7 @@ export default function HomePage() {
         if (devices.length > 0) {
           const d = devices[0];
           setDeviceId(d.id);
-          setUploadIntervalMs(d.upload_interval_ms || 300000);
-          setRecordingIntervalMs(d.recording_interval_ms || 1000);
+          // If the backend has threshold fields, you'd load them here
         }
       } catch {
         // No device yet — show placeholder
@@ -55,8 +59,11 @@ export default function HomePage() {
   // ── Google Sheet live reading (refreshes every 5 s) ──
   const { reading, loading: readingLoading, error: sheetError } = useSheetReading(5_000);
 
-  const tempStatus = reading ? getTempStatus(reading.temperature_c) : 'safe';
+  const tempStatus = reading ? getTempStatus(reading.temperature_c, tempThreshold) : 'safe';
   const tempColors = STATUS_COLORS[tempStatus];
+
+  const humStatus = reading ? getHumidityStatus(reading.humidity_pct, humidityThreshold) : 'safe';
+  const humColors = STATUS_COLORS[humStatus];
 
   const handleSaveSettings = async () => {
     if (!deviceId) { toast.error('No device linked yet'); return; }
@@ -64,7 +71,7 @@ export default function HomePage() {
     try {
       await apiFetch(`/devices/${deviceId}/settings`, {
         method: 'PUT',
-        data: { upload_interval_ms: uploadIntervalMs, recording_interval_ms: recordingIntervalMs },
+        data: { temp_threshold: tempThreshold, humidity_threshold: humidityThreshold },
       });
       toast.success('Settings saved to device!');
     } catch (err: any) {
@@ -140,16 +147,30 @@ export default function HomePage() {
           </div>
 
           {/* Humidity Card */}
-          <div className="glass-panel" style={{ padding: '28px 32px' }}>
+          <div className="glass-panel" style={{
+            padding: '28px 32px',
+            borderColor: reading ? humColors.border : 'rgba(63,198,240,0.2)',
+            background: reading ? humColors.bg : 'rgba(3,2,19,0.6)',
+            transition: 'all 0.5s ease',
+          }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-              <Droplets size={20} color="var(--accent-ice)" />
+              <Droplets size={20} color={reading ? humColors.color : 'rgba(255,255,255,0.4)'} />
               <span style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.6)', letterSpacing: '1px' }}>HUMIDITY</span>
+              {reading && (
+                <span style={{
+                  marginLeft: 'auto', fontSize: '0.7rem', fontWeight: 600, padding: '2px 10px',
+                  borderRadius: '12px', textTransform: 'uppercase', letterSpacing: '0.5px',
+                  color: humColors.color, background: humColors.bg, border: `1px solid ${humColors.border}`,
+                }}>
+                  {humStatus}
+                </span>
+              )}
             </div>
             {readingLoading ? (
               <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '1rem' }}>Connecting...</p>
             ) : reading ? (
               <>
-                <p style={{ fontSize: '3.5rem', fontWeight: 800, margin: 0, color: 'var(--accent-ice)', letterSpacing: '-2px', lineHeight: 1 }}>
+                <p style={{ fontSize: '3.5rem', fontWeight: 800, margin: 0, color: humColors.color, letterSpacing: '-2px', lineHeight: 1 }}>
                   {Number(reading.humidity_pct).toFixed(1)}
                   <span style={{ fontSize: '1.5rem', fontWeight: 400, marginLeft: '4px' }}>%</span>
                 </p>
@@ -181,18 +202,24 @@ export default function HomePage() {
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
-            <IntervalSlider
-              label="Upload Interval"
-              icon={<Upload size={16} />}
-              valueMs={uploadIntervalMs}
-              onChange={setUploadIntervalMs}
+            <ThresholdSlider
+              label="Temperature Threshold"
+              icon={<Thermometer size={16} />}
+              value={tempThreshold}
+              min={-90}
+              max={25}
+              unit="°C"
+              onChange={setTempThreshold}
               disabled={!deviceId}
             />
-            <IntervalSlider
-              label="Recording Interval"
-              icon={<Clock3 size={16} />}
-              valueMs={recordingIntervalMs}
-              onChange={setRecordingIntervalMs}
+            <ThresholdSlider
+              label="Humidity Threshold"
+              icon={<Droplets size={16} />}
+              value={humidityThreshold}
+              min={0}
+              max={100}
+              unit="%"
+              onChange={setHumidityThreshold}
               disabled={!deviceId}
             />
           </div>
