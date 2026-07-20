@@ -86,18 +86,26 @@ export default function HomePage() {
 
   // ── Alert Triggering Logic ──
   useEffect(() => {
-    if (!reading || !deviceId) return;
+    console.log('[Alert] effect ran — reading:', reading, 'deviceId:', deviceId, 'tempStatus:', tempStatus, 'humStatus:', humStatus);
+    if (!reading || !deviceId) {
+      console.log('[Alert] blocked — reading or deviceId is null');
+      return;
+    }
     
     const now = Date.now();
     const COOLDOWN_MS = 60 * 60 * 1000; // 1 hour
     
     const triggerIfNeeded = async (type: 'temperature' | 'humidity', value: number, threshold: number, status: string) => {
+      console.log(`[Alert] triggerIfNeeded — type:${type} value:${value} threshold:${threshold} status:${status}`);
       if (status === 'safe') return;
       
       const lastSentKey = `edr_alert_sent_${userKey}_${type}`;
       const lastSent = parseInt(localStorage.getItem(lastSentKey) || '0', 10);
+      const cooldownRemaining = COOLDOWN_MS - (now - lastSent);
+      console.log(`[Alert] cooldown check — lastSent:${lastSent} remaining:${Math.round(cooldownRemaining/1000)}s`);
       
       if (now - lastSent > COOLDOWN_MS) {
+        console.log(`[Alert] firing alert for ${type}...`);
         // Optimistically set to prevent double-firing in StrictMode
         localStorage.setItem(lastSentKey, now.toString());
         try {
@@ -105,12 +113,15 @@ export default function HomePage() {
             method: 'POST',
             data: { type, value, threshold, status }
           });
+          console.log(`[Alert] success for ${type}`);
           toast(`Alert sent for ${type}`, { icon: '⚠️' });
         } catch (err) {
-          console.error(`Failed to send alert for ${type}:`, err);
+          console.error(`[Alert] FAILED for ${type}:`, err);
           // Rollback if failed
           localStorage.setItem(lastSentKey, lastSent.toString());
         }
+      } else {
+        console.log(`[Alert] cooldown active for ${type}, skipping`);
       }
     };
 
