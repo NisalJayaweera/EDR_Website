@@ -217,7 +217,7 @@ export async function sendAlertEmail(
     </html>
   `;
 
-  const subject = \`[\${status.toUpperCase()}] \${alertType} Alert - Neutronics Cold Chain\`;
+  const subject = `[${status.toUpperCase()}] ${alertType} Alert - Neutronics Cold Chain`;
 
   if (process.env.BREVO_API_KEY) {
     await sendViaBrevoApi(to, subject, html);
@@ -227,7 +227,7 @@ export async function sendAlertEmail(
   const transporter = createTransport();
   if (transporter) {
     await transporter.sendMail({
-      from: \`"Neutronics Cold Chain" <\${process.env.SMTP_USER}>\`,
+      from: `"Neutronics Cold Chain" <${process.env.SMTP_USER}>`,
       to,
       subject,
       html,
@@ -235,6 +235,6 @@ export async function sendAlertEmail(
     return;
   }
 
-  console.log(\`[EMAIL MOCK] Alert email would be sent to: \${to}\`);
-  console.log(\`[EMAIL MOCK] \${subject} | Value: \${value} | Threshold: \${threshold}\`);
+  console.log(`[EMAIL MOCK] Alert email would be sent to: ${to}`);
+  console.log(`[EMAIL MOCK] ${subject} | Value: ${value} | Threshold: ${threshold}`);
 }
