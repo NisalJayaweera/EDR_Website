@@ -256,14 +256,26 @@ export default function HomePage() {
               <Settings size={18} color="var(--accent-ice)" />
               <h2 style={{ fontSize: '1rem', fontWeight: 600, margin: 0 }}>Device Settings</h2>
             </div>
-            <button
-              onClick={handleSaveSettings}
-              disabled={!deviceId || savingSettings}
-              className="btn-primary"
-              style={{ width: 'auto', padding: '8px 20px', fontSize: '0.85rem' }}
-            >
-              {savingSettings ? 'Saving...' : 'Apply Settings'}
-            </button>
+            <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  onClick={() => {
+                    Object.keys(localStorage).forEach(k => k.includes('alert_sent') && localStorage.removeItem(k));
+                    toast.success('Alert cooldowns reset! Alerts will fire immediately on next update.', { duration: 4000 });
+                  }}
+                  className="btn-secondary"
+                  style={{ width: 'auto', padding: '8px 20px', fontSize: '0.85rem' }}
+                >
+                  Reset Alerts
+                </button>
+                <button
+                  onClick={handleSaveSettings}
+                  disabled={!deviceId || savingSettings}
+                  className="btn-primary"
+                  style={{ width: 'auto', padding: '8px 20px', fontSize: '0.85rem' }}
+                >
+                  {savingSettings ? 'Saving...' : 'Apply Settings'}
+                </button>
+              </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
