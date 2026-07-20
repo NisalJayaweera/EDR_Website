@@ -1,12 +1,9 @@
 import pool from '../db/index';
 
 const INTERVAL_MS = 5000;   // Seeding interval: 5 seconds
-const TEMP_MIN_C = -22;     // Frozen cold-chain range
-const TEMP_MAX_C = -14;
-const HUM_MIN_PCT = 55;
-const HUM_MAX_PCT = 70;
 
-// Colombo area GPS coordinates
+// NOTE: Temperature & humidity simulation OFF — real module data only.
+// GPS dummy data remains active so the map stays populated.
 const BASE_LAT = 6.9271;
 const BASE_LNG = 79.8612;
 const GPS_DRIFT = 0.002;
@@ -20,7 +17,7 @@ function driftedCoord(base: number, drift: number): number {
 }
 
 export function startTelemetrySimulator() {
-  console.log('⚡ Telemetry simulator active: generating mock readings for all linked devices every 5s...');
+  console.log('⚡ GPS simulator active: generating mock GPS positions every 5s (temp/humidity simulation OFF)...');
 
   setInterval(async () => {
     try {
@@ -33,23 +30,22 @@ export function startTelemetrySimulator() {
       }
 
       for (const device of devices) {
-        const temp = rand(TEMP_MIN_C, TEMP_MAX_C);
-        const hum = rand(HUM_MIN_PCT, HUM_MAX_PCT);
         const lat = driftedCoord(BASE_LAT, GPS_DRIFT);
         const lng = driftedCoord(BASE_LNG, GPS_DRIFT);
 
-        // Insert mock sensor reading
+        // Insert GPS-only row — temperature_c and humidity_pct are NULL
+        // so real module readings are clearly visible on the dashboard charts.
         await pool.query(
           `INSERT INTO sensor_readings (device_id, temperature_c, humidity_pct, latitude, longitude, recorded_at)
-           VALUES ($1, $2, $3, $4, $5, NOW())`,
-          [device.id, Number(temp.toFixed(2)), Number(hum.toFixed(2)), Number(lat.toFixed(6)), Number(lng.toFixed(6))]
+           VALUES ($1, NULL, NULL, $2, $3, NOW())`,
+          [device.id, Number(lat.toFixed(6)), Number(lng.toFixed(6))]
         );
 
         // Update last seen status
         await pool.query('UPDATE devices SET last_seen_at = NOW() WHERE id = $1', [device.id]);
       }
     } catch (err: any) {
-      console.error('[Telemetry Simulator Error]:', err.message || err);
+      console.error('[GPS Simulator Error]:', err.message || err);
     }
   }, INTERVAL_MS);
 }
