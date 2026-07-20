@@ -37,8 +37,27 @@ export default function HomePage() {
 
   // Fetch user's device on mount
   const [deviceId, setDeviceId] = useState<string | null>(null);
-  const [tempThreshold, setTempThreshold] = useState(25);
-  const [humidityThreshold, setHumidityThreshold] = useState(60);
+  
+  const userKey = `edr_thresholds_${user?.username || 'default'}`;
+  
+  const [tempThreshold, setTempThreshold] = useState(() => {
+    const saved = localStorage.getItem(`${userKey}_temp`);
+    return saved ? parseFloat(saved) : 25;
+  });
+  
+  const [humidityThreshold, setHumidityThreshold] = useState(() => {
+    const saved = localStorage.getItem(`${userKey}_hum`);
+    return saved ? parseFloat(saved) : 60;
+  });
+
+  // Save thresholds to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem(`${userKey}_temp`, tempThreshold.toString());
+  }, [tempThreshold, userKey]);
+
+  useEffect(() => {
+    localStorage.setItem(`${userKey}_hum`, humidityThreshold.toString());
+  }, [humidityThreshold, userKey]);
   const [savingSettings, setSavingSettings] = useState(false);
 
   useEffect(() => {
