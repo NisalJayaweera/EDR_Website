@@ -262,7 +262,7 @@ export default function HomePage() {
                     Object.keys(localStorage).forEach(k => k.includes('alert_sent') && localStorage.removeItem(k));
                     toast.success('Alert cooldowns reset! Alerts will fire immediately on next update.', { duration: 4000 });
                   }}
-                  className="btn-secondary"
+                  className="btn-primary"
                   style={{ width: 'auto', padding: '8px 20px', fontSize: '0.85rem' }}
                 >
                   Reset Alerts
