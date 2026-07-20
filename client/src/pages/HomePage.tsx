@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import { Thermometer, Droplets, Upload, Clock3, Settings } from 'lucide-react';
 import { useLiveClock } from '../hooks/useLiveClock';
-import { useLiveReading } from '../hooks/useLiveReading';
+import { useSheetReading } from '../hooks/useSheetReading';
 import { IntervalSlider } from '../components/IntervalSlider';
 import { apiFetch } from '../lib/api';
 import toast from 'react-hot-toast';
@@ -11,12 +11,11 @@ interface OutletUser {
   user: { name: string; username: string; role: string };
 }
 
-// --- Threshold logic (adjust for your cold-chain product) ---
-// Frozen: safe ≤ -18°C, warning -15 to -18, critical > -15
-// Chilled: safe 2–8°C; you can extend this if needed
+// --- Threshold logic ---
+// Adjust thresholds to match your product's safe temperature range
 function getTempStatus(tempC: number): 'safe' | 'warning' | 'critical' {
-  if (tempC > -15) return 'critical';
-  if (tempC > -18) return 'warning';
+  if (tempC > 35) return 'critical';
+  if (tempC > 30) return 'warning';
   return 'safe';
 }
 
@@ -53,7 +52,8 @@ export default function HomePage() {
     })();
   }, []);
 
-  const { reading, loading: readingLoading } = useLiveReading(deviceId);
+  // ── Google Sheet live reading (refreshes every 60 s) ──
+  const { reading, loading: readingLoading, error: sheetError } = useSheetReading(60_000);
 
   const tempStatus = reading ? getTempStatus(reading.temperature_c) : 'safe';
   const tempColors = STATUS_COLORS[tempStatus];
@@ -131,7 +131,7 @@ export default function HomePage() {
                   <span style={{ fontSize: '1.5rem', fontWeight: 400, marginLeft: '4px' }}>°C</span>
                 </p>
                 <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.3)', marginTop: '10px' }}>
-                  Updated {new Date(reading.recorded_at).toLocaleTimeString()}
+                  Updated {reading.recorded_at}
                 </p>
               </>
             ) : (
@@ -154,7 +154,7 @@ export default function HomePage() {
                   <span style={{ fontSize: '1.5rem', fontWeight: 400, marginLeft: '4px' }}>%</span>
                 </p>
                 <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.3)', marginTop: '10px' }}>
-                  Relative Humidity
+                  Updated {reading.recorded_at}
                 </p>
               </>
             ) : (
