@@ -52,8 +52,8 @@ export default function HomePage() {
     })();
   }, []);
 
-  // ── Google Sheet live reading (refreshes every 60 s) ──
-  const { reading, loading: readingLoading, error: sheetError } = useSheetReading(60_000);
+  // ── Google Sheet live reading (refreshes every 5 s) ──
+  const { reading, loading: readingLoading, error: sheetError } = useSheetReading(5_000);
 
   const tempStatus = reading ? getTempStatus(reading.temperature_c) : 'safe';
   const tempColors = STATUS_COLORS[tempStatus];
